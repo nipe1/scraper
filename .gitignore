@@ -2,3 +2,5 @@
 *.mp3
 content/
 shorts/
+titles/
+credentials.json
