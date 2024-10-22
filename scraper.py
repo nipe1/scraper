@@ -6,8 +6,10 @@ import math
 import random
 import csv
 import json
+from datetime import datetime, timedelta
 from enum import Enum
 from openai import OpenAI
+from youtube_uploader_selenium import YouTubeUploader
 
 with open('H:/.scraper/credentials.json', 'r') as j:
     credentials = json.load(j)
@@ -197,7 +199,7 @@ def fetchTitles():
     with open(path + "titles.json", "w", encoding="utf-8") as outfile:
         outfile.write(val)
 
-# Giving each title it's own file, easier to manage when uploading.
+# Giving each title it's own file, used when uploading.
 def createTitleFiles():
     path = "H:/.scraper/"
 
@@ -206,8 +208,54 @@ def createTitleFiles():
     os.remove(path + "content/titles.json")
 
     for f in jsonTitles["titles"]:
-        with open(path + "titles/" + f["id"] + ".txt", "w", encoding="utf-8") as file:
-            file.write(f["title"])
+        with open(path + "titles/" + f["id"] + ".json", "w", encoding="utf-8") as file:
+            file.write('{"title":"' + f['title'] + '","schedule": "01/01/2001, 00:00"}')
+
+# Uploading videos!
+def uploadContent():
+    path = "H:/.scraper/shorts/"
+    list = os.listdir(path)
+
+    for video in list:
+        with open('H:/.scraper/content/last_date.txt', 'r+') as f:
+                lastDate = f.read()
+                newDate = datetime.strptime(lastDate, '%m/%d/%Y, %H:%M') + timedelta(hours=1)
+                f.seek(0)
+                f.write(newDate.strftime("%m/%d/%Y, %H:%M"))
+                f.truncate()
+
+        # Checking if video was already uploaded
+        if not video[0] == "_":
+            handleYoutube(video)
+            handleTiktok()
+            os.rename(path + video, path + "_" + video)
+            time.sleep(5)
+
+# Uploading to Youtube and scheduling
+def handleYoutube(videoName):
+    try:
+        with open('H:/.scraper/content/last_date.txt', 'r') as f:
+            date = f.read()
+
+        with open('H:/.scraper/titles/'+ videoName[:-3] +'json', 'r+', encoding="utf-8") as j:
+            jsonData = json.load(j)
+            jsonData['schedule'] = date
+            j.seek(0)
+            json.dump(jsonData, j, ensure_ascii=False)
+            j.truncate()
+        
+        video_path = 'H:/.scraper/shorts/' + videoName
+        metadata_path = 'H:/.scraper/titles/' + videoName[:-3] +'json'
+
+        uploader = YouTubeUploader(video_path, metadata_path, profile_path=os.getenv('PROFILE_PATH'))
+        was_video_uploaded, video_id = uploader.upload()
+        if was_video_uploaded:
+            print(video_id + " uploaded!")
+    except:
+        print("Error while uploading")
+
+def handleTiktok():
+    print("tiktok")
 
 # List of subreddits to scrape
 subReddits = ["https://www.reddit.com/r/interestingasfuck/top/.json",
@@ -231,3 +279,5 @@ for x in subReddits:
 
 fetchTitles()
 createTitleFiles()
+
+uploadContent()
