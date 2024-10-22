@@ -11,16 +11,28 @@ from enum import Enum
 from openai import OpenAI
 from youtube_uploader_selenium import YouTubeUploader
 
-with open('H:/.scraper/credentials.json', 'r') as j:
+# Making sure all directories are present
+os.makedirs("H:/.scraper/content/videos", exist_ok=True)
+os.makedirs("H:/.scraper/content/shorts", exist_ok=True)
+os.makedirs("H:/.scraper/content/titles", exist_ok=True)
+os.makedirs("H:/.scraper/content/dupes", exist_ok=True)
+
+credentialsFile = 'H:/.scraper/content/credentials.json'
+
+if not os.path.isfile(credentialsFile):
+    with open(credentialsFile, 'w') as j:
+        j.write('{"credentials": {"openai": {"organization": "yourorganization","project":"yourproject"}}}')
+    raise ValueError('ERROR: credentials.json is empty')
+
+with open(credentialsFile, 'r') as j:
     credentials = json.load(j)
 
 class CredentialsOpenAI(Enum):
     ORGANIZATION = credentials["credentials"]["openai"]["organization"]
     PROJECT = credentials["credentials"]["openai"]["project"]
 
-
 def isDuplicates():
-    path = 'H:/.scraper/content/'
+    path = 'H:/.scraper/content/videos/'
     dupePath = 'H:/.scraper/content/dupes/'
     
     # Checking for duplicate videos, if found move to dupes folder
@@ -49,9 +61,9 @@ def canContinue(r):
     return False
 
 def fetchContent(redditUrl, postCount):
-    save_path = 'H:/.scraper/content/'
-    short_path = 'H:/.scraper/shorts/'
-    title_path = 'H:/.scraper/titles/'
+    save_path = 'H:/.scraper/content/videos/'
+    short_path = 'H:/.scraper/content/shorts/'
+    title_path = 'H:/.scraper/content/titles/'
     vidList = os.listdir(save_path)
     shortList = os.listdir(short_path)
     vidCount = len(vidList) + 1
@@ -70,10 +82,9 @@ def fetchContent(redditUrl, postCount):
 
             # Removing oldest file if overflowing
             if (vidCount > 100):  
-                oldest_file = sorted([short_path + f for f in shortList ], key=os.path.getctime)[0]
+                oldest_file = sorted([save_path + f for f in vidList ], key=os.path.getctime)[0]
                 os.remove(short_path + oldest_file)
                 os.remove(save_path + oldest_file)
-                os.remove(title_path + oldest_file[:-3] + "txt")
 
             # Checking for a video
             if not content["data"]["children"][x]["data"]["is_video"]:
@@ -82,7 +93,7 @@ def fetchContent(redditUrl, postCount):
 
             duration = content["data"]["children"][x]["data"]["media"]["reddit_video"]["duration"]
 
-            if (duration > 59.95):
+            if (duration > 179.95):
                 postCount+=1 # Adding to the number of loops if video is too long
                 continue
 
@@ -169,7 +180,7 @@ def fetchContent(redditUrl, postCount):
 
 # Using ChatGPT to revamp the titles to suit the short form better
 def fetchTitles():
-    path = "H:/.scraper/content/"
+    path = "H:/.scraper/content/videos/"
 
     client = OpenAI(
         organization=CredentialsOpenAI.ORGANIZATION.value,
@@ -201,35 +212,49 @@ def fetchTitles():
 
 # Giving each title it's own file, used when uploading.
 def createTitleFiles():
-    path = "H:/.scraper/"
+    path = "H:/.scraper/content/"
 
-    with open(path + 'content/titles.json', 'r', encoding="utf-8") as j:
+    with open(path + 'videos/titles.json', 'r', encoding="utf-8") as j:
         jsonTitles = json.load(j) 
-    os.remove(path + "content/titles.json")
+    os.remove(path + "videos/titles.json")
 
     for f in jsonTitles["titles"]:
         with open(path + "titles/" + f["id"] + ".json", "w", encoding="utf-8") as file:
             file.write('{"title":"' + f['title'] + '","schedule": "01/01/2001, 00:00"}')
 
+def hour_rounder(t):
+    # Rounds to nearest hour by adding a timedelta hour if minute >= 30
+    return (t.replace(second=0, microsecond=0, minute=0, hour=t.hour)
+               +timedelta(hours=t.minute//30))
+
 # Uploading videos!
 def uploadContent():
-    path = "H:/.scraper/shorts/"
+    path = "H:/.scraper/content/shorts/"
     list = os.listdir(path)
+
+    currentDate = datetime.now() + timedelta(hours=1)
+    currentDate = hour_rounder(currentDate)
 
     for video in list:
         with open('H:/.scraper/content/last_date.txt', 'r+') as f:
                 lastDate = f.read()
                 newDate = datetime.strptime(lastDate, '%m/%d/%Y, %H:%M') + timedelta(hours=1)
+
+                # Can't schedule to the past, updating date to future if that is the case.
+                if newDate < currentDate:
+                    newDate = currentDate
+
                 f.seek(0)
                 f.write(newDate.strftime("%m/%d/%Y, %H:%M"))
                 f.truncate()
+        
+        handleYoutube(video)
+        handleTiktok()
 
-        # Checking if video was already uploaded
-        if not video[0] == "_":
-            handleYoutube(video)
-            handleTiktok()
-            os.rename(path + video, path + "_" + video)
-            time.sleep(5)
+        # Deleting the short + title files after uploading, leaving the main one for comparing dupes.
+        os.remove(path + video)
+        os.remove("H:/.scraper/content/titles/" + video[:-3] +'json')
+        time.sleep(5)
 
 # Uploading to Youtube and scheduling
 def handleYoutube(videoName):
@@ -237,15 +262,15 @@ def handleYoutube(videoName):
         with open('H:/.scraper/content/last_date.txt', 'r') as f:
             date = f.read()
 
-        with open('H:/.scraper/titles/'+ videoName[:-3] +'json', 'r+', encoding="utf-8") as j:
+        with open('H:/.scraper/content/titles/'+ videoName[:-3] +'json', 'r+', encoding="utf-8") as j:
             jsonData = json.load(j)
             jsonData['schedule'] = date
             j.seek(0)
             json.dump(jsonData, j, ensure_ascii=False)
             j.truncate()
         
-        video_path = 'H:/.scraper/shorts/' + videoName
-        metadata_path = 'H:/.scraper/titles/' + videoName[:-3] +'json'
+        video_path = 'H:/.scraper/content/shorts/' + videoName
+        metadata_path = 'H:/.scraper/content/titles/' + videoName[:-3] +'json'
 
         uploader = YouTubeUploader(video_path, metadata_path, profile_path=os.getenv('PROFILE_PATH'))
         was_video_uploaded, video_id = uploader.upload()
@@ -255,7 +280,7 @@ def handleYoutube(videoName):
         print("Error while uploading")
 
 def handleTiktok():
-    print("tiktok")
+    print("Tiktok no implemented")
 
 # List of subreddits to scrape
 subReddits = ["https://www.reddit.com/r/interestingasfuck/top/.json",
