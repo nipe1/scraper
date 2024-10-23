@@ -15,7 +15,7 @@ from youtube_uploader_selenium import YouTubeUploader
 os.makedirs("H:/.scraper/content/videos", exist_ok=True)
 os.makedirs("H:/.scraper/content/shorts", exist_ok=True)
 os.makedirs("H:/.scraper/content/titles", exist_ok=True)
-os.makedirs("H:/.scraper/content/dupes", exist_ok=True)
+os.makedirs("H:/.scraper/content/videos/dupes", exist_ok=True)
 
 credentialsFile = 'H:/.scraper/content/credentials.json'
 
@@ -33,7 +33,7 @@ class CredentialsOpenAI(Enum):
 
 def isDuplicates():
     path = 'H:/.scraper/content/videos/'
-    dupePath = 'H:/.scraper/content/dupes/'
+    dupePath = 'H:/.scraper/content/videos/dupes/'
     
     # Checking for duplicate videos, if found move to dupes folder
     cmd = 'cbird -use ' + path + ' -update -p.alg video -p.types v -p.eg 1 -similar -select-result -first -move ' + dupePath
@@ -81,10 +81,10 @@ def fetchContent(redditUrl, postCount):
             x += 1
 
             # Removing oldest file if overflowing
-            if (vidCount > 100):  
-                oldest_file = sorted([save_path + f for f in vidList ], key=os.path.getctime)[0]
-                os.remove(short_path + oldest_file)
-                os.remove(save_path + oldest_file)
+            if (vidCount > 100): 
+                oldest_file = sorted([save_path + f for f in vidList], key=os.path.getctime)[0]
+                if (oldest_file[-3:] == "mp4"):
+                    os.remove(save_path + oldest_file)
 
             # Checking for a video
             if not content["data"]["children"][x]["data"]["is_video"]:
@@ -93,7 +93,7 @@ def fetchContent(redditUrl, postCount):
 
             duration = content["data"]["children"][x]["data"]["media"]["reddit_video"]["duration"]
 
-            if (duration > 179.95):
+            if (duration > 59.95):
                 postCount+=1 # Adding to the number of loops if video is too long
                 continue
 
@@ -198,7 +198,7 @@ def fetchTitles():
             {"role": "system", "content": "You are a helpful assistant designed to output JSON."},
             {
                 "role": "user",
-                "content": "In this input there are a series of id's and descriptions separated with ','. Can you reword the descriptions to be more like tiktok titles but not over the top? Please respond in the format titles: [{id: ...,title: ...}] "
+                "content": "In this input there are a series of id's and descriptions separated with ','. Can you reword the descriptions to be more like tiktok titles but not over the top? Also add 3 relevant topics as lowercase hashtags to the end of each title. Please respond in the format titles: [{id: ...,title: ...}] "
                 + prompt
             }
         ],
@@ -237,16 +237,16 @@ def uploadContent():
 
     for video in list:
         with open('H:/.scraper/content/last_date.txt', 'r+') as f:
-                lastDate = f.read()
-                newDate = datetime.strptime(lastDate, '%m/%d/%Y, %H:%M') + timedelta(hours=1)
+            lastDate = f.read()
+            newDate = datetime.strptime(lastDate, '%m/%d/%Y, %H:%M') + timedelta(hours=1)
 
-                # Can't schedule to the past, updating date to future if that is the case.
-                if newDate < currentDate:
-                    newDate = currentDate
+            # Can't schedule to the past, updating date to future if that is the case.
+            if newDate < currentDate:
+                newDate = currentDate
 
-                f.seek(0)
-                f.write(newDate.strftime("%m/%d/%Y, %H:%M"))
-                f.truncate()
+            f.seek(0)
+            f.write(newDate.strftime("%m/%d/%Y, %H:%M"))
+            f.truncate()
         
         handleYoutube(video)
         handleTiktok()
@@ -280,7 +280,7 @@ def handleYoutube(videoName):
         print("Error while uploading")
 
 def handleTiktok():
-    print("Tiktok no implemented")
+    print("Tiktok not implemented")
 
 # List of subreddits to scrape
 subReddits = ["https://www.reddit.com/r/interestingasfuck/top/.json",
