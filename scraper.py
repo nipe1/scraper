@@ -47,10 +47,12 @@ def isDuplicates():
     dupe_path = CONST_PATH + 'videos/dupes/'
     
     # Checking for duplicate videos, if found move to dupes folder
-    cmd = 'cbird -use ' + video_path + ' -update -p.alg video -p.types v -p.eg 1 -similar -select-result -first -move ' + dupe_path
+    cmd = 'cbird -use ' + video_path + ' -update -p.alg video -p.types v -p.eg 1 -similar -dups -select-result -first -move ' + dupe_path
     os.system(cmd)
 
-    # Removing the videos from the dupes folder
+    time.sleep(4)
+
+    # Removing the dupes
     files = os.listdir(dupe_path)
     if not len(files) == 0: 
         print("Dupes found, removing...") 
@@ -229,7 +231,7 @@ def fetchTitles():
             {"role": "system", "content": "You are a helpful assistant designed to output JSON."},
             {
                 "role": "user",
-                "content": "In this input there are a series of id's and descriptions separated with ','. Can you reword the descriptions to be more like tiktok titles but not over the top? Some emojis are ok. Also add 3 relevant topics as lowercase hashtags to the end of each title. Please respond in the format titles: [{id: ...,title: ...}] "
+                "content": "In this input there are a series of id's and descriptions separated with ','. Can you reword the descriptions to be more like tiktok titles but not over the top? Emojis can be used. Also add 3 relevant topics as lowercase hashtags to the end of each title. Please respond in the format titles: [{id: ...,title: ...}] "
                 + prompt
             }
         ],
@@ -325,7 +327,8 @@ def handleTiktok(videoName):
         upload_video(CONST_PATH + 'shorts/' + videoName,
             description=title,
             cookies=CONST_PATH + 'cookies.txt',
-            schedule=date)
+            schedule=date,
+            browser='firefox')
     except:
         print("Error while uploading to Tiktok")
     
