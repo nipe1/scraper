@@ -25,8 +25,6 @@ def init():
 
     with open(credentialsFile, 'r') as j:
         CREDENTIALS = json.load(j)["credentials"]
-    # credentials["credentials"]["openai"]["organization"]
-    # credentials["credentials"]["openai"]["project"]
 
 def isDuplicates():
     """

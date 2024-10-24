@@ -208,18 +208,3 @@ def createTitleFiles():
     for f in jsonTitles["titles"]:
         with open(utils.PATH_TITLES + f["id"] + ".json", "w", encoding="utf-8") as file:
             file.write('{"title":"' + f['title'] + '","schedule": "01/01/2001, 00:00"}') 
-                 
-# for x in CONST_SUBREDDITS:
-#     r = fetchContent(x, CONST_VIDEO_AMOUNT)
-#     try:
-#         if canContinue(r):
-#             r = fetchContent(x, CONST_VIDEO_AMOUNT)
-#         else:
-#             print("Error code " + r.status_code)
-#     except:
-#         print("Continuing...")
-
-# fetchTitles()
-# createTitleFiles()
-
-# uploadContent()
