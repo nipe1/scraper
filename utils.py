@@ -1,7 +1,7 @@
 import os
 import json
 import time
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 PATH = os.path.dirname(os.path.abspath(__file__)) + '/content/'#"H:/.scraper/content/"
 PATH_TITLES = PATH + 'titles/'

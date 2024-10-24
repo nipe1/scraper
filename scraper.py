@@ -6,12 +6,7 @@ import math
 import random
 import csv
 import json
-from datetime import datetime, timedelta
-from enum import Enum
 from openai import OpenAI
-from youtube_uploader_selenium import YouTubeUploader
-from tiktok_uploader.upload import upload_video
-from tiktok_uploader.auth import AuthBackend
 import utils
 
 def getContent(subreddits, amount):
